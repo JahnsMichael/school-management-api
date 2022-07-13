@@ -1,5 +1,7 @@
 from django.contrib.auth.models import User, Group
-from rest_framework import serializers, viewsets, permissions, mixins
+from rest_framework import serializers, viewsets, permissions, mixins, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from rest_framework.validators import UniqueValidator
 from django.contrib.auth.password_validation import validate_password
 from api.permissions import ActionViewPermission
@@ -8,7 +10,8 @@ from api.permissions import ActionViewPermission
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['url', 'username', 'email', 'groups']
+        fields = ['url', 'username', 'email',
+                  'groups', 'first_name', "last_name"]
 
 
 class GroupSerializer(serializers.HyperlinkedModelSerializer):
@@ -65,7 +68,16 @@ class UserViewSet(viewsets.ModelViewSet):
     list_rules = [
         [["Officer"], ["list", "retrieve", "destroy",
                        "create", "update", "partial_update"]],
+        [["Officer", "Teacher", "Student"], ["me"]],
     ]
+
+    @action(detail=False, methods=['get'])
+    def me(self, request):
+        return Response({
+            'user': UserSerializer(
+                request.user,
+                context={'request': request}).data
+        }, status.HTTP_200_OK)
 
 
 class GroupViewSet(mixins.ListModelMixin,

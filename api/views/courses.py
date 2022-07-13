@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User, Group
+from django.db.models import Q
 from rest_framework import serializers, viewsets, permissions, mixins, status
 from rest_framework.fields import CurrentUserDefault
 from rest_framework.decorators import action
@@ -11,17 +12,21 @@ from api.views.users import UserSerializer
 class CourseSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
     members = UserSerializer(read_only=True, many=True)
+    owned = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
         fields = ['id', 'url', 'name', 'description',
-                  'enrollment_key', 'author', 'members']
+                  'enrollment_key', 'author', 'members', 'owned']
 
     def create(self, validated_data):
         return Course.objects.create(
             author=self.context['request'].user,
             **validated_data
         )
+
+    def get_owned(self, obj):
+        return self.context['request'].user in obj.members.all()
 
 
 class EnrollmentRequestSerializer(serializers.ModelSerializer):
@@ -51,9 +56,17 @@ class CourseViewSet(viewsets.ModelViewSet):
     permission_classes = (ActionViewPermission,)
     list_rules = [
         [["Officer", "Teacher"], ["list", "retrieve", "destroy",
-                                  "create", "update", "partial_update"]],
-        [["Student"], ["list", "retrieve"]]
+                                  "create", "update", "partial_update", "owned"]],
+        [["Student"], ["list", "retrieve", "owned"]]
     ]
+
+    @action(detail=False, methods=['get'])
+    def owned(self, request):
+        self.queryset = self.queryset.filter(
+            Q(members__in=[request.user]) |
+            Q(author=request.user),
+        )
+        return super().list(request)
 
 
 class EnrollmentRequestViewSet(
