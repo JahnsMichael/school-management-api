@@ -7,19 +7,26 @@ from django.contrib.auth.password_validation import validate_password
 from api.permissions import ActionViewPermission
 
 
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['url', 'username', 'email',
-                  'groups', 'first_name', "last_name"]
-
-
 class GroupSerializer(serializers.HyperlinkedModelSerializer):
+    name = serializers.CharField(read_only=True)
 
     class Meta:
         model = Group
         fields = ['id', 'name']
 
+
+class UserSerializer(serializers.ModelSerializer):
+    groups = GroupSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = User
+        fields = ['id', 'url', 'username', 'email',
+                  'groups', 'first_name', "last_name"]
+
+class ChangeUserRoleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['groups']
 
 class RegisterSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(
@@ -73,6 +80,10 @@ class UserViewSet(viewsets.ModelViewSet):
                 request.user,
                 context={'request': request}).data
         }, status.HTTP_200_OK)
+
+    def partial_update(self, request, pk=None):
+        self.serializer_class = ChangeUserRoleSerializer
+        return super().partial_update(request, pk)
 
 
 class GroupViewSet(mixins.ListModelMixin,
