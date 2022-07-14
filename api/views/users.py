@@ -64,12 +64,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by('-date_joined')
     serializer_class = UserSerializer
-    permission_classes = (ActionViewPermission,)
-    list_rules = [
-        [["Officer"], ["list", "retrieve", "destroy",
-                       "create", "update", "partial_update"]],
-        [["Officer", "Teacher", "Student"], ["me"]],
-    ]
+    permission_classes = (permissions.IsAuthenticated,)
 
     @action(detail=False, methods=['get'])
     def me(self, request):
