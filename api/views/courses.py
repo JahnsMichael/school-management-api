@@ -26,7 +26,7 @@ class CourseSerializer(serializers.ModelSerializer):
         )
 
     def get_owned(self, obj):
-        return self.context['request'].user in obj.members.all()
+        return (self.context['request'].user in obj.members.all()) or (self.context['request'].user == obj.author)
 
 
 class EnrollmentRequestSerializer(serializers.ModelSerializer):
@@ -65,7 +65,7 @@ class CourseViewSet(viewsets.ModelViewSet):
         self.queryset = self.queryset.filter(
             Q(members__in=[request.user]) |
             Q(author=request.user),
-        )
+        ).distinct()
         return super().list(request)
 
 
